@@ -589,7 +589,7 @@ def signup():
             # 🚀 تنبيه الأدمن (أنت) بتليجرام فوراً
             admin_msg = f"🔔 <b>مشترك جديد انضم لـ M-Sniper!</b>\n\n👤 الاسم: {name}\n📧 الإيميل: {email}\n📱 الهاتف: {phone}"
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                          data={"chat_id": ADMIN_TELEGRAM_ID, "text": admin_msg, "parse_mode": "HTML"})
+                          data={"chat_id": ADMIN__ID, "text": admin_msg, "parse_mode": "HTML"})
             
             flash("أهلاً بك في M-Sniper! تم إنشاء حسابك بنجاح.", "success")
             return redirect('/login')
@@ -974,7 +974,7 @@ def payment_page():
                 f"📸 يرجى مراجعة لوحة الإدارة لتفعيل الحساب."
             )
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                          data={"chat_id": ADMIN_TELEGRAM_ID, "text": admin_alert, "parse_mode": "HTML"})
+                          data={"chat_id": ADMIN__ID, "text": admin_alert, "parse_mode": "HTML"})
             
             conn.close()
             flash("تم رفع الإثبات بنجاح! سيتم تفعيل رادار القنص الخاص بك فور المراجعة.", "success")

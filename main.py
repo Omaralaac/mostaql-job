@@ -987,9 +987,8 @@ def activation_step():
    # التعديل في السطر الأخير من الدالة
     return render_template_string(
         BASE_HTML.replace('{% block content %}{% endblock %}', activation_content), 
-        categories=list(KEYWORDS_MAP.keys()) # بنبعت مفاتيح القاموس (الأسماء الرئيسية)
+        kws_list=list(KEYWORDS_MAP.keys())  # غيرنا الاسم هنا لـ kws_list
     )
-
 
 # ==============================
 # 💸 M-SNIPER: بوابة الدفع وتفعيل الاشتراك

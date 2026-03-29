@@ -16,7 +16,7 @@ TOKEN = os.getenv("TOKEN")
 BOT_USERNAME = os.getenv("BOT_USERNAME")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 ADMIN_PASS =  os.getenv("ADMIN_PASS")
-ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID")
+ADMIN__ID = os.getenv("ADMIN__ID")
 DB_NAME = "database.db"
 
 app = Flask(SYSTEM_NAME)
@@ -1028,6 +1028,60 @@ def payment_page():
     </div>
     """
     return render_template_string(BASE_HTML.replace('{% block content %}{% endblock %}', payment_content))
+
+
+@app.route(f'/{TOKEN}', methods=['POST'])
+def handle_telegram_updates(): # سميها أي اسم تحبه، وليكن handle_telegram_updates
+    update = request.get_json()
+    
+    # التأكد إن اللي جاي رسالة نصية
+    if "message" in update and "text" in update["message"]:
+        chat_id = update["message"]["chat"]["id"]
+        text = update["message"]["text"]
+
+        # 1️⃣ حالة الربط لأول مرة (Start مع Token)
+        if text.startswith("/start"):
+            parts = text.split(" ")
+            if len(parts) > 1:
+                user_token = parts[1].strip()
+                conn = get_db()
+                user = conn.execute("SELECT * FROM users WHERE temp_token=?", (user_token,)).fetchone()
+                
+                if user:
+                    # تحديث البيانات وتفعيل الرادار وتصفير التوكن للأمان
+                    conn.execute("UPDATE users SET telegram_id=?, is_active=1, temp_token=NULL WHERE id=?", (chat_id, user['id']))
+                    conn.commit()
+                    conn.close()
+                    
+                    welcome_msg = (
+                        f"🎯 <b>تم ربط حسابك بنجاح في {SYSTEM_NAME}!</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━\n"
+                        f"👋 أهلاً بك يا {user['name']}.\n"
+                        f"📡 الرادار الآن في وضع الاستعداد (On Standby).\n\n"
+                        f"🚀 بمجرد نزول مشروع يطابق مهاراتك، هبعتلك تنبيه فوراً!"
+                    )
+                    send_telegram_msg(chat_id, welcome_msg)
+                else:
+                    send_telegram_msg(chat_id, "❌ عذراً، هذا الرابط غير صالح أو انتهت صلاحيته.")
+            
+            # 2️⃣ حالة لو المستخدم مسجل فعلاً وداس Start تاني
+            else:
+                conn = get_db()
+                user = conn.execute("SELECT * FROM users WHERE telegram_id=?", (chat_id,)).fetchone()
+                conn.close()
+                if user:
+                    send_telegram_msg(chat_id, "🤖 رادار M-Sniper شغال وبيراقب المشاريع حالياً.. خليك مستعد!")
+                else:
+                    send_telegram_msg(chat_id, "⚠️ يرجى تفعيل حسابك من لوحة التحكم أولاً.")
+
+    return "OK", 200
+
+# دالة مساعدة لإرسال الرسائل (Helper Function)
+def send_telegram_msg(chat_id, text):
+    import requests
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    requests.post(url, data=payload)
 
 
 # ==============================

@@ -12,11 +12,11 @@ from flask import Flask, render_template_string, request, redirect, url_for, ses
 # ⚙️ M-SNIPER: الإعدادات الأساسية
 # ==============================
 SYSTEM_NAME = "M-Sniper"
-TOKEN = os.getenv("TOKEN")
-BOT_USERNAME = os.getenv("BOT_USERNAME")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
-ADMIN_PASS =  os.getenv("ADMIN_PASS")
-ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID")
+TOKEN = "8546208480:AAF9601HRW7SXOqYc5vwb99s7r85aFInAMo"
+BOT_USERNAME = "mostaqljonbot"
+ADMIN_EMAIL = "omaralaaadmin@omar.com"
+ADMIN_PASS = "1292002"
+ADMIN_TELEGRAM_ID = "1130472857" # معرف الأدمن اللي حددته
 DB_NAME = "database.db"
 
 app = Flask(SYSTEM_NAME)
@@ -110,6 +110,55 @@ SNIPER_STYLE = """
     }
 </style>
 """
+# ==============================
+# 🗄️ M-SNIPER: قاعدة البيانات الذكية
+# ==============================
+
+def get_db():
+    # استخدام check_same_thread=False ضروري لأن السكرابر يعمل في Thread منفصل
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    """
+    تهيئة قاعدة البيانات بالتصميم المطور لنظام M-Sniper.
+    تم إضافة قيود الفرادة (UNIQUE) لضمان عدم تكرار الحسابات.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 1. جدول المستخدمين (نواة نظام M-Sniper)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL, 
+        email TEXT UNIQUE NOT NULL, 
+        phone TEXT UNIQUE,
+        gender TEXT, 
+        birthdate TEXT, 
+        password TEXT NOT NULL,
+        is_active INTEGER DEFAULT 0,         -- 0: غير نشط، 1: مشترك مفعل
+        payment_status TEXT DEFAULT 'none',   -- none, pending, verified
+        payment_image TEXT,                  -- اسم ملف إثبات الدفع
+        keywords TEXT,                       -- المجالات المختارة (مفصولة بفاصلة)
+        temp_token TEXT UNIQUE,              -- كود الربط المؤقت مع تليجرام
+        telegram_id TEXT UNIQUE,             -- معرف الشات (الهدف الأساسي للقنص)
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    # 2. جدول المشاريع المرصودة (ذاكرة القناص)
+    # تم إضافة UNIQUE للرابط لضمان عدم إرسال نفس المشروع مرتين مهما حدث
+    cursor.execute('CREATE TABLE IF NOT EXISTS seen_projects (
+        link TEXT UNIQUE,
+        captured_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )')
+    
+    conn.commit()
+    conn.close()
+    print(f"✅ تم تهيئة قاعدة بيانات {SYSTEM_NAME} بنجاح.")
+
+# تشغيل التأسيس
+init_db()
 
 # ==============================
 # 🗄️ M-SNIPER: قاعدة البيانات الذكية
@@ -163,69 +212,6 @@ try:
 except Exception as e:
     print(f"❌ حدث خطأ أثناء تهيئة القاعدة: {e}")
     print("💡 نصيحة: امسح ملف database.db وشغل الكود مرة أخرى.")
-
-
-# ==============================
-# 🤖 M-SNIPER: معالج رسائل تليجرام (Bot Logic)
-# ==============================
-
-@app.route(f'/{TOKEN}', methods=['POST'])
-def telegram_webhook():
-    update = request.get_json()
-    
-    if "message" in update and "text" in update["message"]:
-        chat_id = update["message"]["chat"]["id"]
-        text = update["message"]["text"]
-
-        if text.startswith("/start"):
-            parts = text.split(" ")
-            
-            # الحالة الأولى: العميل جاي بـ Token من الموقع (أول مرة ربط)
-            if len(parts) > 1:
-                user_token = parts[1]
-                conn = get_db()
-                user = conn.execute("SELECT * FROM users WHERE temp_token=?", (user_token,)).fetchone()
-                
-                if user:
-                    conn.execute("UPDATE users SET telegram_id=?, is_active=1, temp_token=NULL WHERE id=?", (chat_id, user['id']))
-                    conn.commit()
-                    conn.close()
-                    
-                    welcome_msg = (
-                        f"🎯 <b>تم ربط حسابك بنجاح في {SYSTEM_NAME}!</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━\n"
-                        f"👋 أهلاً بك يا {user['name']}.\n"
-                        f"📡 الرادار الآن في وضع الاستعداد (On Standby).\n\n"
-                        f"🚀 بمجرد نزول أول مشروع يطابق مهاراتك على 'مستقل'، سأقوم بإرساله لك هنا فوراً لتكون أول القناصين!"
-                    )
-                    send_telegram_msg(chat_id, welcome_msg)
-                else:
-                    send_telegram_msg(chat_id, "❌ عذراً، هذا الرابط غير صالح أو انتهت صلاحيته.")
-                return "OK", 200
-
-            # الحالة الثانية: العميل داس Start وهو "مربوط بالفعل" (بيجرب البوت)
-            else:
-                conn = get_db()
-                user = conn.execute("SELECT * FROM users WHERE telegram_id=?", (chat_id,)).fetchone()
-                conn.close()
-
-                if user and user['payment_status'] == 'verified':
-                    active_msg = (
-                        f"🤖 <b>نظام M-Sniper يعمل بكفاءة..</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━\n"
-                        f"🔎 أنا الآن أراقب مشاريع 'مستقل' على مدار الساعة.\n"
-                        f"⏳ خليك مستعد، أول ما ينزل مشروع مناسب هبعتلك تنبيه فوراً!"
-                    )
-                    send_telegram_msg(chat_id, active_msg)
-                else:
-                    send_telegram_msg(chat_id, "⚠️ يرجى تفعيل حسابك من لوحة التحكم أولاً لتتمكن من استقبال المشاريع.")
-
-    return "OK", 200
-
-# دالة مساعدة لتنظيف الكود (Helper Function)
-def send_telegram_msg(chat_id, text):
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                  data={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
 
 
 # ==============================
@@ -317,7 +303,8 @@ def scraper_worker():
             
         # القناص يأخذ استراحة محارب (دقيقتين) قبل الجولة التالية
         time.sleep(120)
-        
+
+
 # ==============================
 # 🌐 M-SNIPER UI: القالب الرئيسي (BASE_HTML)
 # ==============================
@@ -494,9 +481,6 @@ BASE_HTML = """
 </html>
 """
 
-
-
-
 # ==============================
 # 🛣️ M-SNIPER: المسارات الرئيسية (Routes)
 # ==============================
@@ -567,7 +551,6 @@ def home():
     </div>
     """
     return render_template_string(BASE_HTML.replace('{% block content %}{% endblock %}', home_content))
-
 
 # ==============================
 # 📝 M-SNIPER: مسار التسجيل (Signup)
@@ -674,8 +657,6 @@ def signup():
     return render_template_string(BASE_HTML.replace('{% block content %}{% endblock %}', signup_content))
 
 
-
-
 # ==============================
 # 🔑 M-SNIPER: مسار تسجيل الدخول (Login)
 # ==============================
@@ -747,8 +728,6 @@ def login():
     </div>
     """
     return render_template_string(BASE_HTML.replace('{% block content %}{% endblock %}', login_content))
-
-
 
 
 # ==============================
@@ -839,8 +818,6 @@ def dashboard():
         </div>
         """
         return render_template_string(BASE_HTML.replace('{% block content %}{% endblock %}', content))
-
-
 
 
 # ==============================
@@ -953,7 +930,6 @@ def activation_step():
     )
 
 
-
 # ==============================
 # 💸 M-SNIPER: بوابة الدفع وتفعيل الاشتراك
 # ==============================
@@ -1017,7 +993,7 @@ def payment_page():
                 
                 <div class="alert alert-info border-0 shadow-sm py-3 mb-4 rounded-4" style="background: rgba(52, 152, 219, 0.08);">
                     <p class="mb-1 small">قيمة الاشتراك الشهري:</p>
-                    <h3 class="fw-bold text-primary mb-0">100 ج.م</h3>
+                    <h3 class="fw-bold text-primary mb-0">200 ج.م</h3>
                 </div>
 
                 <p class="small text-muted mb-2">حول المبلغ إلى رقم فودافون كاش التالي:</p>
@@ -1050,9 +1026,6 @@ def payment_page():
     </div>
     """
     return render_template_string(BASE_HTML.replace('{% block content %}{% endblock %}', payment_content))
-
-
-
 
 
 # ==============================
@@ -1220,9 +1193,6 @@ def admin():
     )
 
 
-
-
-
 # ==============================
 # 🛡️ M-SNIPER: إجراءات الإدارة والخروج
 # ==============================
@@ -1237,8 +1207,8 @@ def approve(uid):
     user = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
     
     if user:
-       # تفعيل حالة الدفع فقط
-        conn.execute("UPDATE users SET payment_status='verified' WHERE id=?", (uid,))
+        # تفعيل المستخدم وتحديث حالة الدفع
+        conn.execute("UPDATE users SET is_active=1, payment_status='verified' WHERE id=?", (uid,))
         conn.commit()
         
         # 🔔 حركة اختيارية: يمكنك إرسال رسالة تليجرام للمستخدم تخبره بتفعيل حسابه إذا كان الـ ID موجود
@@ -1299,3 +1269,5 @@ if __name__ == '__main__':
     print("🌐 M-Sniper Web: السيرفر جاهز على http://localhost:5000")
     # تم وضع debug=False لضمان عدم تشغيل الـ Thread مرتين في الخلفية
     app.run(host='0.0.0.0', port=5000, debug=False)
+
+

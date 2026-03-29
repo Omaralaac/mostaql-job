@@ -29,17 +29,56 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # التصنيفات الرسمية لـ "مستقل" - محدثة وشاملة
-KEYWORDS_LIST = [
-    "أعمال وخدمات استشارية",
-    "برمجة، تطوير المواقع والتطبيقات",
-    "ذكاء اصطناعي وتعلم الآلة",
-    "هندسة، عمارة وتصميم داخلي",
-    "تصميم، فيديو وصوتيات",
-    "تسويق إلكتروني ومبيعات",
-    "كتابة، تحرير، ترجمة ولغات",
-    "دعم، مساعدة وإدخال بيانات",
-    "تدريب وتعليم عن بعد"
-]
+KEYWORDS_MAP = {
+    "برمجة، تطوير المواقع والتطبيقات": [
+        "برمجة", "تطوير", "موقع", "ويب", "مبرمج", "مطور", "تطبيق", "تطبيقات", "اندرويد", "ايفون", 
+        "web", "app", "python", "php", "laravel", "wordpress", "javascript", "react", "flutter", 
+        "ios", "android", "api", "بايثون", "ووردبريس", "سكريبت", "برمجه", "موقع الكتروني", "متجر", "ecommerce"
+    ],
+    
+    "ذكاء اصطناعي وتعلم الآلة": [
+        "ذكاء اصطناعي", "ai", "machine learning", "bot", "بوت", "تحليل بيانات", "data analysis", 
+        "تعلم الآلة", "python", "روبوت", "أتمتة", "automation", "nlp", "chatgpt", "openai", 
+        "بيانات", "تنبؤ", "deep learning", "رؤية الكمبيوتر"
+    ],
+    
+    "تصميم، فيديو وصوتيات": [
+        "تصميم", "ديزاين", "شعار", "لوجو", "logo", "design", "مونتاج", "فيديو", "video", "motion", 
+        "موشن جرافيك", "فوتوشوب", "photoshop", "illustrator", "تعديل صور", "معلق صوتي", "فويس أوفر", 
+        "voice over", "هوية بصرية", "بروفايل", "انيميشن", "صوت", "هندسة صوتية"
+    ],
+    
+    "تسويق إلكتروني ومبيعات": [
+        "تسويق", "إعلانات", "ads", "ممول", "سيو", "seo", "مبيعات", "حملة", "marketing", "facebook ads", 
+        "google ads", "سوشيال ميديا", "social media", "إدارة صفحات", "محتوى تسويقي", "مشاهير", "بريد إلكتروني"
+    ],
+    
+    "كتابة، تحرير، ترجمة ولغات": [
+        "كتابة", "مقالات", "محتوى", "تأليف", "ترجمة", "مترجم", "إنجليزي", "english", "عربي", 
+        "تدقيق لغوي", "صياغة", "تفريغ", "تدوين", "سيناريو", "نصوص", "كتابه", "قواعد"
+    ],
+    
+    "أعمال وخدمات استشارية": [
+        "دراسة جدوى", "خطة عمل", "استشارة", "إدارة مشاريع", "محاسبة", "قانوني", "مالي", 
+        "تطوير أعمال", "بيزنس", "business plan", "محاسب", "نموذج عمل", "اقتصاد", "نصيحة"
+    ],
+    
+    "هندسة، عمارة وتصميم داخلي": [
+        "هندسة", "autocad", "أوتوكاد", "تصميم داخلي", "ديكور", "3d", "مخطط", "عمارة", 
+        "انشائي", "معماري", "revit", "ماكس", "3ds max", "رسم هندسي", "تخطيط"
+    ],
+    
+    "دعم، مساعدة وإدخال بيانات": [
+        "إدخال بيانات", "data entry", "ورد", "word", "إكسل", "excel", "مساعد افتراضي", 
+        "دعم فني", "خدمة عملاء", "تفريغ ملفات", "pdf", "نقل بيانات", "تحويل ملفات"
+    ],
+    
+    "تدريب وتعليم عن بعد": [
+        "شرح", "تدريس", "كورس", "دورة", "معلم", "مدرس", "تعليم", "لغات", "تدريب", 
+        "مناهج", "محاضرة", "اونلاين", "english teacher", "تحفيظ", "شرح دروس"
+    ]
+}
+
 
 # ==============================
 # ✨ M-SNIPER UI: لمسات الأنيميشن والاحترافية
@@ -217,7 +256,7 @@ except Exception as e:
 
 
 # ==============================
-# 🎯 M-SNIPER: محرك القنص الذكي (Scraper)
+# 🎯 M-SNIPER: محرك القنص الذكي (المطور)
 # ==============================
 
 def scraper_worker():
@@ -225,7 +264,6 @@ def scraper_worker():
     while True:
         try:
             conn = get_db()
-            # جلب المشاريع من مستقل مع Header احترافي لتجنب الحظر
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
@@ -237,7 +275,6 @@ def scraper_worker():
 
             soup = BeautifulSoup(res.text, "html.parser")
             
-            # جلب المشتركين المفعلين فقط والذين لديهم Telegram ID
             active_users = conn.execute("""
                 SELECT * FROM users 
                 WHERE is_active=1 
@@ -245,44 +282,44 @@ def scraper_worker():
                 AND telegram_id IS NOT NULL
             """).fetchall()
             
-            # البحث عن عناوين المشاريع والروابط
             for project_card in soup.select("h2 a"):
                 link = project_card["href"]
                 if not link.startswith("http"):
                     link = "https://mostaql.com" + link
                 
-                title = project_card.text.strip()
+                title = project_card.text.strip().lower()
                 
-                # التأكد من أن المشروع لم يتم "قنصه" من قبل
                 if not conn.execute("SELECT link FROM seen_projects WHERE link=?", (link,)).fetchone():
                     
-                    # عملية الفلترة الذكية لكل مستخدم
                     for user in active_users:
                         if user['keywords']:
-                            # تحويل الكلمات المفتاحية لقائمة
-                            user_kws = [k.strip().lower() for k in user['keywords'].split(',')]
+                            # الاقسام اللي العميل اختارها (زي: برمجة، تطوير المواقع...)
+                            user_categories = [c.strip() for c in user['keywords'].split(',')]
                             
-                            # الفلترة: هل عنوان المشروع يحتوي على أي من مهارات المستخدم؟
-                            if any(kw in title.lower() for kw in user_kws):
-                                
-                                # تصميم رسالة "M-Sniper" الاحترافية
+                            match_found = False
+                            # فحص كل قسم اختاره العميل
+                            for category in user_categories:
+                                if category in KEYWORDS_MAP:
+                                    # جلب الكلمات المفتاحية الصغيره المرتبطة بالقسم ده
+                                    sub_keywords = KEYWORDS_MAP[category]
+                                    
+                                    # 🎯 السحر هنا: لو أي كلمة من القاموس موجودة في عنوان المشروع
+                                    if any(word.lower() in title for word in sub_keywords):
+                                        match_found = True
+                                        break # لقينا تطابق، مش لازم نكمل فحص باقي الاقسام للمستخدم ده
+                            
+                            if match_found:
                                 msg = (
                                     f"🎯 <b>M-Sniper: هدف جديد تم رصده!</b>\n"
                                     f"━━━━━━━━━━━━━━━━━━\n"
-                                    f"📌 <b>المشروع:</b> {title}\n"
-                                    f"✅ يطابق مهاراتك المختارة\n"
+                                    f"📌 <b>المشروع:</b> {project_card.text.strip()}\n"
+                                    f"✅ يطابق اهتماماتك الذكية\n"
                                     f"━━━━━━━━━━━━━━━━━━\n"
                                     f"⚡ <i>كن أول من يقدم عرضاً!</i>"
                                 )
                                 
-                                # زر تفاعلي لفتح المشروع
-                                kb = {
-                                    "inline_keyboard": [[
-                                        {"text": "🚀 اقتنص الفرصة الآن", "url": link}
-                                    ]]
-                                }
+                                kb = {"inline_keyboard": [[{"text": "🚀 اقتنص الفرصة الآن", "url": link}]]}
                                 
-                                # إرسال التنبيه الفوري
                                 requests.post(
                                     f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
                                     json={
@@ -294,7 +331,6 @@ def scraper_worker():
                                     timeout=10
                                 )
                     
-                    # تسجيل المشروع في "ذاكرة القناص" حتى لا يتكرر
                     conn.execute("INSERT INTO seen_projects (link) VALUES (?)", (link,))
                     conn.commit()
             
@@ -303,8 +339,8 @@ def scraper_worker():
         except Exception as e:
             print(f"❌ {SYSTEM_NAME} Scraper Error: {e}")
             
-        # القناص يأخذ استراحة محارب (دقيقتين) قبل الجولة التالية
         time.sleep(120)
+
 
 
 # ==============================
@@ -562,40 +598,62 @@ def home():
 def signup():
     if request.method == 'POST':
         name = request.form['name']
-        email = request.form['email']
-        phone = request.form['phone']
+        email = request.form['email'].strip().lower()
+        phone = request.form['phone'].strip()
         gender = request.form['gender']
         bdate = request.form['bdate']
         password = request.form['password']
         
-        # توليد توكن فريد لربط تليجرام لاحقاً
+        # توليد توكن فريد لربط تليجرام لاحقاً (8 أرقام وحروف)
         token = str(uuid.uuid4())[:8]
         
         conn = get_db()
         try:
-            # التأكد من عدم تكرار البيانات (Email or Phone)
+            # 🛡️ التأكد من عدم تكرار البيانات (Email or Phone)
             check = conn.execute("SELECT * FROM users WHERE email=? OR phone=?", (email, phone)).fetchone()
             if check:
                 flash("عذراً، البريد الإلكتروني أو رقم الهاتف مسجل بالفعل!", "error")
                 return redirect('/signup')
             
-            # إدخال البيانات في قاعدة البيانات
+            # 📥 إدخال البيانات في قاعدة البيانات
             conn.execute("""
                 INSERT INTO users (name, email, phone, gender, birthdate, password, temp_token) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (name, email, phone, gender, bdate, password, token))
             conn.commit()
             
-            # 🚀 تنبيه الأدمن (أنت) بتليجرام فوراً
-            admin_msg = f"🔔 <b>مشترك جديد انضم لـ M-Sniper!</b>\n\n👤 الاسم: {name}\n📧 الإيميل: {email}\n📱 الهاتف: {phone}"
-            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                          data={"chat_id": ADMIN__ID, "text": admin_msg, "parse_mode": "HTML"})
+            # 🚀 تنبيه الأدمن (عمر) بتليجرام فوراً بتنسيق احترافي
+            admin_msg = (
+                f"🔔 <b>مشترك جديد انضم لـ {SYSTEM_NAME}!</b>\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"👤 <b>الاسم:</b> {name}\n"
+                f"📧 <b>الإيميل:</b> <code>{email}</code>\n"
+                f"📱 <b>الهاتف:</b> <code>{phone}</code>\n"
+                f"📅 <b>التاريخ:</b> {time.strftime('%Y-%m-%d %H:%M')}\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"🔑 <b>التوكن:</b> <code>{token}</code>"
+            )
             
+            # إرسال التنبيه مع Timeout لضمان عدم توقف الموقع
+            try:
+                requests.post(
+                    f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
+                    data={
+                        "chat_id": ADMIN__ID, 
+                        "text": admin_msg, 
+                        "parse_mode": "HTML"
+                    }, 
+                    timeout=8
+                )
+            except:
+                print("⚠️ فشل إرسال تنبيه تليجرام للأدمن، ولكن تم تسجيل المستخدم بنجاح.")
+
             flash("أهلاً بك في M-Sniper! تم إنشاء حسابك بنجاح.", "success")
             return redirect('/login')
             
         except Exception as e:
             flash(f"حدث خطأ غير متوقع: {e}", "error")
+            print(f"❌ Signup Error: {e}")
         finally:
             conn.close()
     

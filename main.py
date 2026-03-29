@@ -147,11 +147,13 @@ def init_db():
     )''')
     
     # 2. جدول المشاريع المرصودة (ذاكرة القناص)
-    # تم إضافة UNIQUE للرابط لضمان عدم إرسال نفس المشروع مرتين مهما حدث
-    cursor.execute('CREATE TABLE IF NOT EXISTS seen_projects (
-        link TEXT UNIQUE,
-        captured_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )')
+    # تم إضافة UNIQUE للرابط لضمان عدم إرسال نفس المشروع مرتين مهما حدر
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS seen_projects (
+            link TEXT UNIQUE,
+            captured_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     
     conn.commit()
     conn.close()

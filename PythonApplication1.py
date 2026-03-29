@@ -12,11 +12,11 @@ from flask import Flask, render_template_string, request, redirect, url_for, ses
 # ⚙️ M-SNIPER: الإعدادات الأساسية
 # ==============================
 SYSTEM_NAME = "M-Sniper"
-TOKEN = "8546208480:AAF9601HRW7SXOqYc5vwb99s7r85aFInAMo"
-BOT_USERNAME = "mostaqljonbot"
-ADMIN_EMAIL = "omaralaaadmin@omar.com"
-ADMIN_PASS = "1292002"
-ADMIN_TELEGRAM_ID = "1130472857" # معرف الأدمن اللي حددته
+TOKEN = os.getenv("TOKEN")
+BOT_USERNAME = os.getenv("BOT_USERNAME")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+ADMIN_PASS =  os.getenv("ADMIN_PASS")
+ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID")
 DB_NAME = "database.db"
 
 app = Flask(SYSTEM_NAME)

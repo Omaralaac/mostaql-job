@@ -177,38 +177,55 @@ def telegram_webhook():
         chat_id = update["message"]["chat"]["id"]
         text = update["message"]["text"]
 
-        # فحص لو الرسالة هي /start ومعاها التوكن (مثال: /start ab12cd34)
         if text.startswith("/start"):
             parts = text.split(" ")
+            
+            # الحالة الأولى: العميل جاي بـ Token من الموقع (أول مرة ربط)
             if len(parts) > 1:
                 user_token = parts[1]
-                
                 conn = get_db()
-                # البحث عن المستخدم صاحب هذا التوكن
                 user = conn.execute("SELECT * FROM users WHERE temp_token=?", (user_token,)).fetchone()
                 
                 if user:
-                    # ربط الـ telegram_id بالحساب وتفعيل استقبال الرسائل
-                    conn.execute("UPDATE users SET telegram_id=? WHERE id=?", (chat_id, user['id']))
+                    conn.execute("UPDATE users SET telegram_id=?, is_active=1, temp_token=NULL WHERE id=?", (chat_id, user['id']))
                     conn.commit()
                     conn.close()
                     
-                    welcome_back = (
-                        f"🎯 <b>أهلاً بك يا {user['name']} في M-Sniper!</b>\n"
+                    welcome_msg = (
+                        f"🎯 <b>تم ربط حسابك بنجاح في {SYSTEM_NAME}!</b>\n"
                         f"━━━━━━━━━━━━━━━━━━\n"
-                        f"✅ تم ربط حسابك بنجاح.\n"
-                        f"🚀 الرادار الآن يعمل وسأرسل لك أي مشروع يطابق مهاراتك فوراً."
+                        f"👋 أهلاً بك يا {user['name']}.\n"
+                        f"📡 الرادار الآن في وضع الاستعداد (On Standby).\n\n"
+                        f"🚀 بمجرد نزول أول مشروع يطابق مهاراتك على 'مستقل'، سأقوم بإرساله لك هنا فوراً لتكون أول القناصين!"
                     )
-                    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                                  data={"chat_id": chat_id, "text": welcome_back, "parse_mode": "HTML"})
+                    send_telegram_msg(chat_id, welcome_msg)
                 else:
-                    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                                  data={"chat_id": chat_id, "text": "❌ عذراً، هذا الرابط غير صالح أو انتهت صلاحيته."})
+                    send_telegram_msg(chat_id, "❌ عذراً، هذا الرابط غير صالح أو انتهت صلاحيته.")
+                return "OK", 200
+
+            # الحالة الثانية: العميل داس Start وهو "مربوط بالفعل" (بيجرب البوت)
             else:
-                requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                              data={"chat_id": chat_id, "text": "مرحباً بك في M-Sniper! يرجى الضغط على رابط الربط من داخل لوحة التحكم الخاصة بك."})
-                
+                conn = get_db()
+                user = conn.execute("SELECT * FROM users WHERE telegram_id=?", (chat_id,)).fetchone()
+                conn.close()
+
+                if user and user['payment_status'] == 'verified':
+                    active_msg = (
+                        f"🤖 <b>نظام M-Sniper يعمل بكفاءة..</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━\n"
+                        f"🔎 أنا الآن أراقب مشاريع 'مستقل' على مدار الساعة.\n"
+                        f"⏳ خليك مستعد، أول ما ينزل مشروع مناسب هبعتلك تنبيه فوراً!"
+                    )
+                    send_telegram_msg(chat_id, active_msg)
+                else:
+                    send_telegram_msg(chat_id, "⚠️ يرجى تفعيل حسابك من لوحة التحكم أولاً لتتمكن من استقبال المشاريع.")
+
     return "OK", 200
+
+# دالة مساعدة لتنظيف الكود (Helper Function)
+def send_telegram_msg(chat_id, text):
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
+                  data={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
 
 
 # ==============================
@@ -1220,8 +1237,8 @@ def approve(uid):
     user = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
     
     if user:
-        # تفعيل المستخدم وتحديث حالة الدفع
-        conn.execute("UPDATE users SET is_active=1, payment_status='verified' WHERE id=?", (uid,))
+       # تفعيل حالة الدفع فقط
+        conn.execute("UPDATE users SET payment_status='verified' WHERE id=?", (uid,))
         conn.commit()
         
         # 🔔 حركة اختيارية: يمكنك إرسال رسالة تليجرام للمستخدم تخبره بتفعيل حسابه إذا كان الـ ID موجود

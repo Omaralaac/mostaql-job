@@ -165,6 +165,51 @@ except Exception as e:
     print("💡 نصيحة: امسح ملف database.db وشغل الكود مرة أخرى.")
 
 
+# ==============================
+# 🤖 M-SNIPER: معالج رسائل تليجرام (Bot Logic)
+# ==============================
+
+@app.route(f'/{TOKEN}', methods=['POST'])
+def telegram_webhook():
+    update = request.get_json()
+    
+    if "message" in update and "text" in update["message"]:
+        chat_id = update["message"]["chat"]["id"]
+        text = update["message"]["text"]
+
+        # فحص لو الرسالة هي /start ومعاها التوكن (مثال: /start ab12cd34)
+        if text.startswith("/start"):
+            parts = text.split(" ")
+            if len(parts) > 1:
+                user_token = parts[1]
+                
+                conn = get_db()
+                # البحث عن المستخدم صاحب هذا التوكن
+                user = conn.execute("SELECT * FROM users WHERE temp_token=?", (user_token,)).fetchone()
+                
+                if user:
+                    # ربط الـ telegram_id بالحساب وتفعيل استقبال الرسائل
+                    conn.execute("UPDATE users SET telegram_id=? WHERE id=?", (chat_id, user['id']))
+                    conn.commit()
+                    conn.close()
+                    
+                    welcome_back = (
+                        f"🎯 <b>أهلاً بك يا {user['name']} في M-Sniper!</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━\n"
+                        f"✅ تم ربط حسابك بنجاح.\n"
+                        f"🚀 الرادار الآن يعمل وسأرسل لك أي مشروع يطابق مهاراتك فوراً."
+                    )
+                    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
+                                  data={"chat_id": chat_id, "text": welcome_back, "parse_mode": "HTML"})
+                else:
+                    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
+                                  data={"chat_id": chat_id, "text": "❌ عذراً، هذا الرابط غير صالح أو انتهت صلاحيته."})
+            else:
+                requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
+                              data={"chat_id": chat_id, "text": "مرحباً بك في M-Sniper! يرجى الضغط على رابط الربط من داخل لوحة التحكم الخاصة بك."})
+                
+    return "OK", 200
+
 
 # ==============================
 # 🎯 M-SNIPER: محرك القنص الذكي (Scraper)

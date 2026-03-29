@@ -984,9 +984,10 @@ def activation_step():
     </style>
     """
     
+   # التعديل في السطر الأخير من الدالة
     return render_template_string(
         BASE_HTML.replace('{% block content %}{% endblock %}', activation_content), 
-        kws_list=KEYWORDS_LIST
+        categories=list(KEYWORDS_MAP.keys()) # بنبعت مفاتيح القاموس (الأسماء الرئيسية)
     )
 
 
